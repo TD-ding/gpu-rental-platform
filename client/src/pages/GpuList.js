@@ -30,7 +30,7 @@ export default function GpuList() {
   const handleSubmit = async (gpuId, hours) => {
     try {
       const res = await API.post('/orders', { gpu_id: gpuId, hours });
-      setMsg(`下单成功！订单ID: ${res.data.order_id}，费用: ¥${res.data.total_price}`);
+      setMsg(`下单成功！订单ID: ${res.data.order_id}，费用: ¥${(res.data.total_price / 100).toFixed(2)}`);
       setSelectedGpu(null);
       const list = await API.get('/gpus');
       setGpus(list.data.gpus);

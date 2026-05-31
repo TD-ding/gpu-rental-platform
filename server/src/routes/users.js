@@ -5,8 +5,14 @@ const { auth, adminOnly } = require('../middleware/auth');
 const router = express.Router();
 
 router.get('/', auth, adminOnly, (req, res) => {
-  const users = db.prepare('SELECT id, username, email, role, created_at FROM users ORDER BY created_at DESC').all();
-  res.json({ users });
+  const page = Math.max(1, parseInt(req.query.page) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+  const offset = (page - 1) * limit;
+
+  const total = db.prepare('SELECT COUNT(*) as count FROM users').get().count;
+  const users = db.prepare('SELECT id, username, email, role, created_at FROM users ORDER BY created_at DESC LIMIT ? OFFSET ?').all(limit, offset);
+
+  res.json({ users, page, limit, total, totalPages: Math.ceil(total / limit) });
 });
 
 router.put('/:id/role', auth, adminOnly, (req, res) => {

@@ -3,20 +3,40 @@ import API from '../utils/api';
 
 const STATUS_MAP = { pending: '待支付', paid: '已支付', running: '运行中', completed: '已完成', cancelled: '已取消' };
 
+const NEXT_STATUS = { pending: ['paid', 'cancelled'], paid: ['running', 'cancelled'], running: ['completed'], completed: [], cancelled: [] };
+
+function formatPrice(cents) {
+  return (cents / 100).toFixed(2);
+}
+
 export default function OrderManage() {
   const [orders, setOrders] = useState([]);
   const [msg, setMsg] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => { loadOrders(); }, []);
 
   useEffect(() => {
-    API.get('/orders').then(res => setOrders(res.data.orders)).catch(() => setMsg('加载失败'));
-  }, []);
+    if (!msg) return;
+    const timer = setTimeout(() => setMsg(''), 3000);
+    return () => clearTimeout(timer);
+  }, [msg]);
+
+  const loadOrders = async (p = 1) => {
+    try {
+      const res = await API.get('/orders', { params: { page: p, limit: 10 } });
+      setOrders(res.data.orders);
+      setPage(res.data.page);
+      setTotalPages(res.data.totalPages);
+    } catch { setMsg('加载失败'); }
+  };
 
   const updateStatus = async (id, status) => {
     try {
       await API.put(`/orders/${id}/status`, { status });
       setMsg('状态已更新');
-      const res = await API.get('/orders');
-      setOrders(res.data.orders);
+      loadOrders(page);
     } catch (err) {
       setMsg(err.response?.data?.error || '更新失败');
     }
@@ -31,23 +51,27 @@ export default function OrderManage() {
           <thead>
             <tr>
               <th>ID</th><th>用户</th><th>GPU</th><th>时长</th><th>费用</th>
-              <th>状态</th><th>创建时间</th><th>操作</th>
+              <th>状态</th><th>创建时间</th><th>更新时间</th><th>操作</th>
             </tr>
           </thead>
           <tbody>
             {orders.map(o => (
               <tr key={o.id}>
                 <td>#{o.id}</td><td>{o.username}</td><td>{o.gpu_name}</td>
-                <td>{o.hours}h</td><td>¥{o.total_price}</td>
+                <td>{o.hours}h</td><td>¥{formatPrice(o.total_price)}</td>
                 <td><span className={`status-badge ${o.status}`}>{STATUS_MAP[o.status]}</span></td>
                 <td>{new Date(o.created_at).toLocaleString('zh-CN')}</td>
+                <td>{o.updated_at ? new Date(o.updated_at).toLocaleString('zh-CN') : '-'}</td>
                 <td>
                   <select
                     value={o.status}
                     onChange={e => updateStatus(o.id, e.target.value)}
                     style={{padding:'4px 8px',background:'var(--bg-input)',color:'var(--text)',border:'1px solid var(--border)',borderRadius:'4px'}}
                   >
-                    {Object.entries(STATUS_MAP).map(([k,v]) => <option key={k} value={k}>{v}</option>)}
+                    <option value={o.status}>{STATUS_MAP[o.status]}</option>
+                    {NEXT_STATUS[o.status]?.map(s => (
+                      <option key={s} value={s}>{STATUS_MAP[s]}</option>
+                    ))}
                   </select>
                 </td>
               </tr>
@@ -55,6 +79,13 @@ export default function OrderManage() {
           </tbody>
         </table>
       </div>
+      {totalPages > 1 && (
+        <div className="pagination">
+          <button className="btn btn-sm btn-outline" disabled={page <= 1} onClick={() => loadOrders(page - 1)}>上一页</button>
+          <span className="page-info">{page} / {totalPages}</span>
+          <button className="btn btn-sm btn-outline" disabled={page >= totalPages} onClick={() => loadOrders(page + 1)}>下一页</button>
+        </div>
+      )}
     </div>
   );
 }

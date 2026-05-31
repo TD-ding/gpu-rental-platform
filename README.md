@@ -21,21 +21,22 @@ gpu-rental-platform/
 │       │   └── rateLimit.js      # 接口限流中间件
 │       ├── routes/
 │       │   ├── auth.js           # 认证路由
-│       │   ├── gpus.js           # GPU资源路由
-│       │   ├── orders.js         # 订单路由
-│       │   └── users.js          # 用户管理路由
+│       │   ├── gpus.js           # GPU资源路由（分页）
+│       │   ├── orders.js         # 订单路由（分页、状态流转控制）
+│       │   ├── stats.js          # 统计数据路由
+│       │   └── users.js          # 用户管理路由（分页）
 │       └── index.js              # 入口文件
 ├── client/                # 用户前端
 │   └── src/
-│       ├── components/           # 公共组件
+│       ├── components/           # 公共组件（GpuCard, RentModal, Navbar）
 │       ├── pages/                # 页面组件
 │       ├── utils/                # 工具函数 (API, AuthContext)
 │       └── App.js                # 应用入口
 ├── admin/                 # 管理员面板
 │   └── src/
-│       ├── components/           # 公共组件
+│       ├── components/           # 公共组件（Sidebar）
 │       ├── pages/                # 页面组件
-│       ├── utils/                # 工具函数 (API)
+│       ├── utils/                # 工具函数 (API, AuthContext)
 │       └── App.js                # 应用入口
 ├── .gitignore
 └── package.json
@@ -99,55 +100,78 @@ npm start
 | PORT | 服务端口 | 5000 |
 | JWT_SECRET | JWT签名密钥 (**必填**) | 无 |
 | DB_PATH | SQLite数据库路径 | ./data/gpu_rental.db |
+| ALLOWED_ORIGINS | CORS允许的来源（逗号分隔） | http://localhost:3000,http://localhost:3001 |
 
 ## API 接口
 
 ### 认证
-- `POST /api/auth/register` - 注册（密码至少6位，用户名2-20字符）
+- `POST /api/auth/register` - 注册（密码至少6位，用户名2-20字符，异步加密）
 - `POST /api/auth/login` - 登录（限流：15分钟内最多10次）
 - `GET /api/auth/me` - 获取当前用户
 
 ### GPU资源
-- `GET /api/gpus` - 获取GPU列表
+- `GET /api/gpus` - 获取GPU列表（支持 `page`, `limit`, `status` 分页查询）
 - `GET /api/gpus/:id` - 获取GPU详情
 - `POST /api/gpus` - 添加GPU（管理员）
 - `PUT /api/gpus/:id` - 更新GPU（管理员）
-- `DELETE /api/gpus/:id` - 删除GPU（管理员）
+- `DELETE /api/gpus/:id` - 删除GPU（管理员，有关联订单时禁止删除）
 
 ### 订单
-- `POST /api/orders` - 创建订单
-- `GET /api/orders/my` - 我的订单
-- `GET /api/orders` - 所有订单（管理员）
-- `PUT /api/orders/:id/status` - 更新订单状态（管理员）
+- `POST /api/orders` - 创建订单（最大720小时，金额以分为单位整数存储）
+- `GET /api/orders/my` - 我的订单（分页）
+- `GET /api/orders` - 所有订单（管理员，分页）
+- `PUT /api/orders/:id/status` - 更新订单状态（管理员，仅允许合法流转）
 - `PUT /api/orders/:id/pay` - 支付订单
 
+### 订单状态流转规则
+```
+pending → paid / cancelled
+paid → running / cancelled
+running → completed
+completed → (终态)
+cancelled → (终态)
+```
+
 ### 用户管理
-- `GET /api/users` - 用户列表（管理员）
+- `GET /api/users` - 用户列表（管理员，分页）
 - `PUT /api/users/:id/role` - 修改用户角色（管理员）
 - `DELETE /api/users/:id` - 删除用户（管理员，有活跃订单时禁止删除）
+
+### 统计
+- `GET /api/stats` - 仪表盘统计数据（管理员）
+
+## 金额说明
+
+所有金额在后端以**分（整数）**存储，避免浮点数精度问题。前端展示时除以100转换为元。
 
 ## 功能清单
 
 ### 用户端
 - 注册 / 登录
 - 浏览GPU算力列表（显卡型号、显存、算力、价格）
-- 租赁下单（选择时长，自动计算费用）
-- 订单管理（查看订单、支付）
+- 租赁下单（选择时长，自动计算费用，提交按钮防重复）
+- 订单管理（查看订单、支付、分页浏览）
 - 响应式布局
 - Token过期自动跳转登录页
 - 操作提示3秒自动消失
 
 ### 管理员面板
-- 仪表盘（GPU数量、订单数、用户数、收入统计）
-- GPU资源管理（增删改查）
-- 订单管理（查看所有订单、修改状态）
-- 用户管理（查看用户、切换角色、删除）
-- 前端校验管理员身份，非管理员自动跳转登录页
+- 仪表盘（后端直接返回统计数据）
+- GPU资源管理（增删改查、分页、有关联订单禁止删除）
+- 订单管理（查看所有订单、合法状态流转、分页）
+- 用户管理（查看用户、切换角色、删除、分页）
+- 全局管理员认证状态（AuthContext），切换页面无需重复验证
 
-### 安全特性
+### 安全与健壮性
 - 后端密码长度校验（≥6位）
+- 密码加密异步处理，不阻塞主线程
 - 登录接口限流（15分钟/10次）
 - JWT密钥启动时检查，使用默认值拒绝启动
-- 删除用户前检查是否有活跃订单
+- CORS限制，只允许配置的前端来源访问
+- 金额整数存储（分），避免浮点精度问题
+- 订单状态严格按流转规则变化
+- 删除用户/GPU前检查关联数据
+- 租赁时长上限720小时
 - 全局错误处理防止服务崩溃
 - .env 敏感信息不纳入版本控制
+- 订单状态变更记录 updated_at 时间

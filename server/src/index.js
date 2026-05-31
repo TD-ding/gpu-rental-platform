@@ -15,24 +15,34 @@ const authRoutes = require('./routes/auth');
 const gpuRoutes = require('./routes/gpus');
 const orderRoutes = require('./routes/orders');
 const userRoutes = require('./routes/users');
+const statsRoutes = require('./routes/stats');
+const { auth, adminOnly } = require('./middleware/auth');
+const db = require('./config/db');
 
 const app = express();
 const PORT = process.env.SERVER_PORT || process.env.PORT || 5000;
 
-app.use(cors());
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:3001').split(',');
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    callback(null, false);
+  },
+  credentials: true,
+}));
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/gpus', gpuRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/stats', statsRoutes);
 
 app.use(express.static(path.join(__dirname, '../../client/build')));
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../../client/build/index.html'));
 });
 
-// Global error handler
 app.use((err, req, res, next) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Internal server error' });

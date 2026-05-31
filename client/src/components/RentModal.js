@@ -1,13 +1,28 @@
 import React, { useState } from 'react';
 
+const MAX_HOURS = 720;
+
 export default function RentModal({ gpu, onClose, onSubmit }) {
   const [hours, setHours] = useState(1);
+  const [submitting, setSubmitting] = useState(false);
 
-  const totalPrice = (gpu.price_per_hour * hours).toFixed(2);
+  const pricePerHour = gpu.price_per_hour / 100;
+  const totalPrice = (pricePerHour * hours).toFixed(2);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onSubmit(gpu.id, hours);
+    setSubmitting(true);
+    try {
+      await onSubmit(gpu.id, hours);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleHoursChange = (e) => {
+    let v = parseInt(e.target.value) || 1;
+    v = Math.max(1, Math.min(MAX_HOURS, v));
+    setHours(v);
   };
 
   return (
@@ -25,16 +40,16 @@ export default function RentModal({ gpu, onClose, onSubmit }) {
             </div>
             <div className="form-group">
               <label>单价</label>
-              <input type="text" value={`¥${gpu.price_per_hour}/小时`} disabled />
+              <input type="text" value={`¥${pricePerHour.toFixed(2)}/小时`} disabled />
             </div>
             <div className="form-group">
-              <label>租赁时长（小时）</label>
+              <label>租赁时长（小时，最大{MAX_HOURS}）</label>
               <input
                 type="number"
                 min="1"
-                max="720"
+                max={MAX_HOURS}
                 value={hours}
-                onChange={(e) => setHours(Math.max(1, parseInt(e.target.value) || 1))}
+                onChange={handleHoursChange}
               />
             </div>
             <div className="order-total">
@@ -44,7 +59,9 @@ export default function RentModal({ gpu, onClose, onSubmit }) {
           </div>
           <div className="modal-footer">
             <button type="button" className="btn btn-outline" onClick={onClose}>取消</button>
-            <button type="submit" className="btn btn-primary">确认下单</button>
+            <button type="submit" className="btn btn-primary" disabled={submitting}>
+              {submitting ? '提交中...' : '确认下单'}
+            </button>
           </div>
         </form>
       </div>

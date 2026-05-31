@@ -4,10 +4,14 @@ const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 const { auth, JWT_SECRET } = require('../middleware/auth');
 const { loginLimiter } = require('../middleware/rateLimit');
+const { promisify } = require('util');
+
+const hashAsync = promisify(bcrypt.hash);
+const compareAsync = promisify(bcrypt.compare);
 
 const router = express.Router();
 
-router.post('/register', (req, res) => {
+router.post('/register', async (req, res) => {
   const { username, email, password } = req.body;
   if (!username || !email || !password) {
     return res.status(400).json({ error: 'All fields are required' });
@@ -19,7 +23,7 @@ router.post('/register', (req, res) => {
     return res.status(400).json({ error: 'Username must be 2-20 characters' });
   }
   try {
-    const hash = bcrypt.hashSync(password, 10);
+    const hash = await hashAsync(password, 10);
     const info = db.prepare('INSERT INTO users (username, email, password) VALUES (?, ?, ?)').run(username, email, hash);
     const token = jwt.sign({ id: info.lastInsertRowid, username, role: 'user' }, JWT_SECRET, { expiresIn: '7d' });
     res.json({ token, user: { id: info.lastInsertRowid, username, email, role: 'user' } });
@@ -31,16 +35,19 @@ router.post('/register', (req, res) => {
   }
 });
 
-router.post('/login', loginLimiter, (req, res) => {
+router.post('/login', loginLimiter, async (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'All fields are required' });
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
   if (!user) return res.status(401).json({ error: 'Invalid credentials' });
-  if (!bcrypt.compareSync(password, user.password)) {
-    return res.status(401).json({ error: 'Invalid credentials' });
+  try {
+    const match = await compareAsync(password, user.password);
+    if (!match) return res.status(401).json({ error: 'Invalid credentials' });
+    const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
+    res.json({ token, user: { id: user.id, username: user.username, email: user.email, role: user.role } });
+  } catch {
+    res.status(401).json({ error: 'Invalid credentials' });
   }
-  const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
-  res.json({ token, user: { id: user.id, username: user.username, email: user.email, role: user.role } });
 });
 
 router.get('/me', auth, (req, res) => {

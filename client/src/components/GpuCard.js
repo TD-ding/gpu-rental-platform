@@ -28,7 +28,7 @@ export default function GpuCard({ gpu, onRent }) {
       </div>
       <div className="gpu-card-footer">
         <div className="gpu-price">
-          <span className="price-amount">¥{gpu.price_per_hour}</span>
+          <span className="price-amount">¥{(gpu.price_per_hour / 100).toFixed(2)}</span>
           <span className="price-unit">/小时</span>
         </div>
         <button

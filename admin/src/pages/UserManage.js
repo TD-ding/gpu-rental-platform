@@ -4,18 +4,32 @@ import API from '../utils/api';
 export default function UserManage() {
   const [users, setUsers] = useState([]);
   const [msg, setMsg] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  useEffect(() => { loadUsers(); }, []);
 
   useEffect(() => {
-    API.get('/users').then(res => setUsers(res.data.users)).catch(() => setMsg('加载失败'));
-  }, []);
+    if (!msg) return;
+    const timer = setTimeout(() => setMsg(''), 3000);
+    return () => clearTimeout(timer);
+  }, [msg]);
+
+  const loadUsers = async (p = 1) => {
+    try {
+      const res = await API.get('/users', { params: { page: p, limit: 10 } });
+      setUsers(res.data.users);
+      setPage(res.data.page);
+      setTotalPages(res.data.totalPages);
+    } catch { setMsg('加载失败'); }
+  };
 
   const toggleRole = async (id, currentRole) => {
     const newRole = currentRole === 'admin' ? 'user' : 'admin';
     try {
       await API.put(`/users/${id}/role`, { role: newRole });
       setMsg('角色已更新');
-      const res = await API.get('/users');
-      setUsers(res.data.users);
+      loadUsers(page);
     } catch (err) {
       setMsg(err.response?.data?.error || '更新失败');
     }
@@ -26,8 +40,7 @@ export default function UserManage() {
     try {
       await API.delete(`/users/${id}`);
       setMsg('用户已删除');
-      const res = await API.get('/users');
-      setUsers(res.data.users);
+      loadUsers(page);
     } catch (err) {
       setMsg(err.response?.data?.error || '删除失败');
     }
@@ -61,6 +74,13 @@ export default function UserManage() {
           </tbody>
         </table>
       </div>
+      {totalPages > 1 && (
+        <div className="pagination">
+          <button className="btn btn-sm btn-outline" disabled={page <= 1} onClick={() => loadUsers(page - 1)}>上一页</button>
+          <span className="page-info">{page} / {totalPages}</span>
+          <button className="btn btn-sm btn-outline" disabled={page >= totalPages} onClick={() => loadUsers(page + 1)}>下一页</button>
+        </div>
+      )}
     </div>
   );
 }

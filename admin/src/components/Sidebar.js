@@ -1,11 +1,13 @@
 import React from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+import { useAdminAuth } from '../utils/AuthContext';
 
 export default function Sidebar() {
   const navigate = useNavigate();
+  const { logout } = useAdminAuth();
 
-  const logout = () => {
-    localStorage.removeItem('admin_token');
+  const handleLogout = () => {
+    logout();
     navigate('/login');
   };
 
@@ -18,7 +20,7 @@ export default function Sidebar() {
         <NavLink to="/orders" className="sidebar-link">订单管理</NavLink>
         <NavLink to="/users" className="sidebar-link">用户管理</NavLink>
       </nav>
-      <button className="sidebar-logout" onClick={logout}>退出登录</button>
+      <button className="sidebar-logout" onClick={handleLogout}>退出登录</button>
     </aside>
   );
 }

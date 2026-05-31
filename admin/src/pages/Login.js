@@ -1,25 +1,25 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import API from '../utils/api';
+import { useAdminAuth } from '../utils/AuthContext';
 
 export default function AdminLogin() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAdminAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
-      const res = await API.post('/auth/login', { username, password });
-      if (res.data.user.role !== 'admin') {
-        setError('需要管理员权限');
-        return;
-      }
-      localStorage.setItem('admin_token', res.data.token);
+      await login(username, password);
       navigate('/dashboard');
     } catch (err) {
-      setError(err.response?.data?.error || '登录失败');
+      setError(err.message === 'Admin access required' ? '需要管理员权限' : (err.response?.data?.error || '登录失败'));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -38,7 +38,9 @@ export default function AdminLogin() {
             <label>密码</label>
             <input type="password" value={password} onChange={e => setPassword(e.target.value)} required />
           </div>
-          <button type="submit" className="btn btn-primary btn-block">登录</button>
+          <button type="submit" className="btn btn-primary btn-block" disabled={submitting}>
+            {submitting ? '登录中...' : '登录'}
+          </button>
         </form>
       </div>
     </div>

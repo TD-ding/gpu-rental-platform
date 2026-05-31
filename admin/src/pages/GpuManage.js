@@ -3,22 +3,37 @@ import API from '../utils/api';
 
 const emptyGpu = { name: '', model: '', vram: '', compute_power: '', price_per_hour: '', total_units: 1, status: 'available', description: '' };
 
+function formatPrice(cents) {
+  return (cents / 100).toFixed(2);
+}
+
 export default function GpuManage() {
   const [gpus, setGpus] = useState([]);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyGpu);
   const [msg, setMsg] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   useEffect(() => { loadGpus(); }, []);
 
-  const loadGpus = async () => {
-    const res = await API.get('/gpus');
+  useEffect(() => {
+    if (!msg) return;
+    const timer = setTimeout(() => setMsg(''), 3000);
+    return () => clearTimeout(timer);
+  }, [msg]);
+
+  const loadGpus = async (p = 1) => {
+    const res = await API.get('/gpus', { params: { page: p, limit: 10 } });
     setGpus(res.data.gpus);
+    setPage(res.data.page);
+    setTotalPages(res.data.totalPages);
   };
 
   const handleEdit = (gpu) => {
     setEditing(gpu.id);
-    setForm({ ...gpu });
+    setForm({ ...gpu, price_per_hour: (gpu.price_per_hour / 100).toFixed(2) });
   };
 
   const handleNew = () => {
@@ -28,17 +43,23 @@ export default function GpuManage() {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    setSaving(true);
     try {
+      const payload = { ...form, price_per_hour: Math.round(parseFloat(form.price_per_hour) * 100), total_units: +form.total_units };
       if (editing === 'new') {
-        await API.post('/gpus', { ...form, price_per_hour: +form.price_per_hour, total_units: +form.total_units, available_units: +form.total_units });
+        payload.available_units = payload.total_units;
+        await API.post('/gpus', payload);
       } else {
-        await API.put(`/gpus/${editing}`, { ...form, price_per_hour: +form.price_per_hour, total_units: +form.total_units });
+        payload.available_units = +form.available_units;
+        await API.put(`/gpus/${editing}`, payload);
       }
       setMsg('保存成功');
       setEditing(null);
-      loadGpus();
+      loadGpus(page);
     } catch (err) {
       setMsg(err.response?.data?.error || '保存失败');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -47,7 +68,7 @@ export default function GpuManage() {
     try {
       await API.delete(`/gpus/${id}`);
       setMsg('删除成功');
-      loadGpus();
+      loadGpus(page);
     } catch (err) {
       setMsg(err.response?.data?.error || '删除失败');
     }
@@ -103,7 +124,7 @@ export default function GpuManage() {
               <input value={form.description} onChange={e => setForm({...form, description: e.target.value})} />
             </div>
             <div style={{marginTop:16, display:'flex', gap:12}}>
-              <button type="submit" className="btn btn-primary">保存</button>
+              <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? '保存中...' : '保存'}</button>
               <button type="button" className="btn btn-outline" onClick={() => setEditing(null)}>取消</button>
             </div>
           </form>
@@ -122,7 +143,7 @@ export default function GpuManage() {
             {gpus.map(g => (
               <tr key={g.id}>
                 <td>{g.id}</td><td>{g.name}</td><td>{g.model}</td><td>{g.vram}</td><td>{g.compute_power}</td>
-                <td>¥{g.price_per_hour}/h</td><td>{g.available_units}/{g.total_units}</td>
+                <td>¥{formatPrice(g.price_per_hour)}/h</td><td>{g.available_units}/{g.total_units}</td>
                 <td><span className={`status-badge ${g.status}`}>{g.status === 'available' ? '可用' : '不可用'}</span></td>
                 <td>
                   <button className="btn btn-sm btn-primary" onClick={() => handleEdit(g)} style={{marginRight:8}}>编辑</button>
@@ -133,6 +154,13 @@ export default function GpuManage() {
           </tbody>
         </table>
       </div>
+      {totalPages > 1 && (
+        <div className="pagination">
+          <button className="btn btn-sm btn-outline" disabled={page <= 1} onClick={() => loadGpus(page - 1)}>上一页</button>
+          <span className="page-info">{page} / {totalPages}</span>
+          <button className="btn btn-sm btn-outline" disabled={page >= totalPages} onClick={() => loadGpus(page + 1)}>下一页</button>
+        </div>
+      )}
     </div>
   );
 }
