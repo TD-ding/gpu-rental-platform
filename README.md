@@ -104,7 +104,7 @@ npm start
 
 ## 数据库迁移
 
-使用 `schema_version` 表管理迁移版本，每次启动自动检查并运行未执行的迁移。当前版本：1。
+使用 `schema_version` 表管理迁移版本，每次启动自动检查并运行未执行的迁移。当前版本：2。
 
 ## API 接口
 
@@ -121,7 +121,7 @@ npm start
 - `DELETE /api/gpus/:id` - 删除GPU（管理员，有关联订单时禁止删除）
 
 ### 订单
-- `POST /api/orders` - 创建订单（最大720小时，金额以分为单位整数存储）
+- `POST /api/orders` - 创建订单（最大720小时，金额以分为单位整数存储，每用户每GPU限1个活跃订单）
 - `GET /api/orders/my` - 我的订单（分页）
 - `GET /api/orders` - 所有订单（管理员，分页）
 - `PUT /api/orders/:id/status` - 更新订单状态（管理员，仅允许合法流转）
@@ -169,6 +169,13 @@ cancelled → (终态)
 - 全局管理员认证状态（AuthContext），切换页面无需重复验证
 
 ### 安全与健壮性
+- API 不存在时返回 JSON 错误而非 HTML
+- 数据库外键约束已启用（foreign_keys=ON）
+- GPU 价格 CHECK 约束（>0），前后端双重校验
+- 未捕获异常/未处理 Promise 拒绝时进程退出，避免状态不一致
+- 每用户每GPU限1个活跃订单，防止单用户占满库存
+- 种子数据密码哈希使用异步 bcrypt，不阻塞启动
+- 所有列表接口统一分页响应格式（page/limit/total/totalPages）
 - 后端密码长度校验（≥6位）
 - 邮箱格式校验
 - 用户名限字母数字下划线中文
@@ -182,7 +189,7 @@ cancelled → (终态)
 - GPU更新支持部分更新（未传字段保留原值）
 - 删除用户/GPU前检查关联数据
 - 租赁时长上限720小时
-- 数据库迁移使用版本号管理（schema_version表）
+- 数据库迁移使用版本号管理（schema_version表，MAX(version)查询）
 - 全局错误处理防止服务崩溃
 - React ErrorBoundary 防止前端白屏
 - 共享格式化/映射工具（format.js），避免重复代码

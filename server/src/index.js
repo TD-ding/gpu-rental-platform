@@ -38,7 +38,15 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/stats', statsRoutes);
 
+// Serve static files in production
 app.use(express.static(path.join(__dirname, '../../client/build')));
+
+// API 404 handler - must be before the SPA catch-all
+app.use('/api', (req, res) => {
+  res.status(404).json({ error: 'API endpoint not found' });
+});
+
+// SPA catch-all
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../../client/build/index.html'));
 });
@@ -49,11 +57,13 @@ app.use((err, req, res, next) => {
 });
 
 process.on('uncaughtException', (err) => {
-  console.error('Uncaught Exception:', err);
+  console.error('Uncaught Exception - exiting:', err);
+  process.exit(1);
 });
 
 process.on('unhandledRejection', (reason) => {
-  console.error('Unhandled Rejection:', reason);
+  console.error('Unhandled Rejection - exiting:', reason);
+  process.exit(1);
 });
 
 app.listen(PORT, () => {

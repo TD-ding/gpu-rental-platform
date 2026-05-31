@@ -11,6 +11,9 @@ const ALLOWED_TRANSITIONS = {
 };
 
 const MAX_HOURS = 720;
+const MAX_ACTIVE_ORDERS_PER_GPU_PER_USER = 1;
+
+const DEFAULT_LIMIT = 20;
 
 const router = express.Router();
 
@@ -26,6 +29,14 @@ router.post('/', auth, (req, res) => {
   const gpu = db.prepare('SELECT * FROM gpu_resources WHERE id = ? AND status = ?').get(gpu_id, 'available');
   if (!gpu) return res.status(404).json({ error: 'GPU not available' });
   if (gpu.available_units <= 0) return res.status(400).json({ error: 'No available units' });
+
+  const activeCount = db.prepare(
+    "SELECT COUNT(*) as count FROM orders WHERE user_id = ? AND gpu_id = ? AND status IN ('pending', 'paid', 'running')"
+  ).get(req.user.id, gpu_id).count;
+
+  if (activeCount >= MAX_ACTIVE_ORDERS_PER_GPU_PER_USER) {
+    return res.status(400).json({ error: 'You already have an active order for this GPU' });
+  }
 
   const total_price = Math.round(gpu.price_per_hour * hours);
 
@@ -52,7 +63,7 @@ router.post('/', auth, (req, res) => {
 
 router.get('/my', auth, (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || DEFAULT_LIMIT));
   const offset = (page - 1) * limit;
 
   const total = db.prepare('SELECT COUNT(*) as count FROM orders WHERE user_id = ?').get(req.user.id).count;
@@ -67,7 +78,7 @@ router.get('/my', auth, (req, res) => {
 
 router.get('/', auth, adminOnly, (req, res) => {
   const page = Math.max(1, parseInt(req.query.page) || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 20));
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || DEFAULT_LIMIT));
   const offset = (page - 1) * limit;
 
   const total = db.prepare('SELECT COUNT(*) as count FROM orders').get().count;
