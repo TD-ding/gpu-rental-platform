@@ -1,11 +1,12 @@
 import React from 'react';
+import { formatPrice, GPU_STATUS_MAP } from '../utils/format';
 
 export default function GpuCard({ gpu, onRent }) {
   return (
     <div className="gpu-card">
       <div className="gpu-card-header">
         <h3>{gpu.name}</h3>
-        <span className={`gpu-status ${gpu.status}`}>{gpu.status === 'available' ? '可用' : '不可用'}</span>
+        <span className={`gpu-status ${gpu.status}`}>{GPU_STATUS_MAP[gpu.status] || gpu.status}</span>
       </div>
       <div className="gpu-card-body">
         <div className="gpu-spec">
@@ -28,7 +29,7 @@ export default function GpuCard({ gpu, onRent }) {
       </div>
       <div className="gpu-card-footer">
         <div className="gpu-price">
-          <span className="price-amount">¥{(gpu.price_per_hour / 100).toFixed(2)}</span>
+          <span className="price-amount">¥{formatPrice(gpu.price_per_hour)}</span>
           <span className="price-unit">/小时</span>
         </div>
         <button

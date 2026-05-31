@@ -96,7 +96,9 @@ router.put('/:id/status', auth, adminOnly, (req, res) => {
   const updateOrder = db.transaction(() => {
     db.prepare('UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(status, req.params.id);
     if (status === 'cancelled' || status === 'completed') {
-      db.prepare('UPDATE gpu_resources SET available_units = available_units + 1 WHERE id = ?').run(order.gpu_id);
+      db.prepare(
+        'UPDATE gpu_resources SET available_units = MIN(available_units + 1, total_units) WHERE id = ?'
+      ).run(order.gpu_id);
     }
   });
 

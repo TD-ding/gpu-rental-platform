@@ -62,12 +62,29 @@ router.post('/', auth, adminOnly, (req, res) => {
 });
 
 router.put('/:id', auth, adminOnly, (req, res) => {
-  const { name, model, vram, compute_power, price_per_hour, total_units, available_units, status, description } = req.body;
+  const gpu = db.prepare('SELECT * FROM gpu_resources WHERE id = ?').get(req.params.id);
+  if (!gpu) return res.status(404).json({ error: 'GPU not found' });
+
+  const {
+    name = gpu.name,
+    model = gpu.model,
+    vram = gpu.vram,
+    compute_power = gpu.compute_power,
+    price_per_hour = gpu.price_per_hour,
+    total_units = gpu.total_units,
+    available_units = gpu.available_units,
+    status = gpu.status,
+    description = gpu.description,
+  } = req.body;
+
+  const newTotalUnits = Math.max(0, +total_units);
+  const newAvailableUnits = Math.min(Math.max(0, +available_units), newTotalUnits);
+  const newPrice = Math.round(+price_per_hour);
+
   try {
-    const info = db.prepare(
+    db.prepare(
       'UPDATE gpu_resources SET name=?, model=?, vram=?, compute_power=?, price_per_hour=?, total_units=?, available_units=?, status=?, description=? WHERE id=?'
-    ).run(name, model, vram, compute_power, Math.round(price_per_hour), total_units, available_units, status, description, req.params.id);
-    if (info.changes === 0) return res.status(404).json({ error: 'GPU not found' });
+    ).run(name, model, vram, compute_power, newPrice, newTotalUnits, newAvailableUnits, status, description, req.params.id);
     res.json({ message: 'GPU updated successfully' });
   } catch (err) {
     res.status(500).json({ error: 'Failed to update GPU' });

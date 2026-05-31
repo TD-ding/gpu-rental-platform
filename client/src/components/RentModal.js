@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { formatPrice } from '../utils/format';
 
 const MAX_HOURS = 720;
 
@@ -6,8 +7,7 @@ export default function RentModal({ gpu, onClose, onSubmit }) {
   const [hours, setHours] = useState(1);
   const [submitting, setSubmitting] = useState(false);
 
-  const pricePerHour = gpu.price_per_hour / 100;
-  const totalPrice = (pricePerHour * hours).toFixed(2);
+  const totalPriceCents = gpu.price_per_hour * hours;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -40,7 +40,7 @@ export default function RentModal({ gpu, onClose, onSubmit }) {
             </div>
             <div className="form-group">
               <label>单价</label>
-              <input type="text" value={`¥${pricePerHour.toFixed(2)}/小时`} disabled />
+              <input type="text" value={`¥${formatPrice(gpu.price_per_hour)}/小时`} disabled />
             </div>
             <div className="form-group">
               <label>租赁时长（小时，最大{MAX_HOURS}）</label>
@@ -54,7 +54,7 @@ export default function RentModal({ gpu, onClose, onSubmit }) {
             </div>
             <div className="order-total">
               <span>总计费用</span>
-              <span className="total-price">¥{totalPrice}</span>
+              <span className="total-price">¥{formatPrice(totalPriceCents)}</span>
             </div>
           </div>
           <div className="modal-footer">

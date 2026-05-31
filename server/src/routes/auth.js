@@ -9,6 +9,9 @@ const { promisify } = require('util');
 const hashAsync = promisify(bcrypt.hash);
 const compareAsync = promisify(bcrypt.compare);
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const USERNAME_RE = /^[\w一-龥]{2,20}$/;
+
 const router = express.Router();
 
 router.post('/register', async (req, res) => {
@@ -16,11 +19,14 @@ router.post('/register', async (req, res) => {
   if (!username || !email || !password) {
     return res.status(400).json({ error: 'All fields are required' });
   }
+  if (!EMAIL_RE.test(email)) {
+    return res.status(400).json({ error: 'Invalid email format' });
+  }
+  if (!USERNAME_RE.test(username)) {
+    return res.status(400).json({ error: 'Username can only contain letters, numbers, underscores, and Chinese characters (2-20)' });
+  }
   if (password.length < 6) {
     return res.status(400).json({ error: 'Password must be at least 6 characters' });
-  }
-  if (username.length < 2 || username.length > 20) {
-    return res.status(400).json({ error: 'Username must be 2-20 characters' });
   }
   try {
     const hash = await hashAsync(password, 10);

@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../utils/AuthContext';
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const USERNAME_RE = /^[\w一-龥]{2,20}$/;
+
 export default function Register() {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -12,6 +15,18 @@ export default function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!EMAIL_RE.test(email)) {
+      setError('邮箱格式不正确');
+      return;
+    }
+    if (!USERNAME_RE.test(username)) {
+      setError('用户名只能包含字母、数字、下划线和中文（2-20字符）');
+      return;
+    }
+    if (password.length < 6) {
+      setError('密码至少6位');
+      return;
+    }
     try {
       await register(username, email, password);
       navigate('/');

@@ -1,9 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import API from '../utils/api';
-
-function formatPrice(cents) {
-  return (cents / 100).toFixed(2);
-}
+import { formatPrice } from '../utils/format';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({ gpus: 0, orders: 0, users: 0, revenue: 0 });

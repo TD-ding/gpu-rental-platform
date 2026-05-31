@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import API from '../utils/api';
 import { useAuth } from '../utils/AuthContext';
+import { formatPrice } from '../utils/format';
 import GpuCard from '../components/GpuCard';
 import RentModal from '../components/RentModal';
 
@@ -9,12 +10,21 @@ export default function GpuList() {
   const [gpus, setGpus] = useState([]);
   const [selectedGpu, setSelectedGpu] = useState(null);
   const [msg, setMsg] = useState('');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
-  useEffect(() => {
-    API.get('/gpus').then(res => setGpus(res.data.gpus)).catch(() => setMsg('加载失败'));
-  }, []);
+  const loadGpus = (p = 1) => {
+    API.get('/gpus', { params: { page: p, limit: 12 } }).then(res => {
+      setGpus(res.data.gpus);
+      setPage(res.data.page || 1);
+      setTotalPages(res.data.totalPages || 1);
+    }).catch(() => setMsg('加载失败'));
+  };
+
+  useEffect(() => { loadGpus(); }, []);
 
   useEffect(() => {
     if (!msg) return;
@@ -23,17 +33,19 @@ export default function GpuList() {
   }, [msg]);
 
   const handleRent = (gpu) => {
-    if (!user) { navigate('/login'); return; }
+    if (!user) {
+      navigate('/login', { state: { from: location } });
+      return;
+    }
     setSelectedGpu(gpu);
   };
 
   const handleSubmit = async (gpuId, hours) => {
     try {
       const res = await API.post('/orders', { gpu_id: gpuId, hours });
-      setMsg(`下单成功！订单ID: ${res.data.order_id}，费用: ¥${(res.data.total_price / 100).toFixed(2)}`);
+      setMsg(`下单成功！订单ID: ${res.data.order_id}，费用: ¥${formatPrice(res.data.total_price)}`);
       setSelectedGpu(null);
-      const list = await API.get('/gpus');
-      setGpus(list.data.gpus);
+      loadGpus(page);
     } catch (err) {
       setMsg(err.response?.data?.error || '下单失败');
     }
@@ -50,6 +62,13 @@ export default function GpuList() {
       </div>
       {selectedGpu && (
         <RentModal gpu={selectedGpu} onClose={() => setSelectedGpu(null)} onSubmit={handleSubmit} />
+      )}
+      {totalPages > 1 && (
+        <div className="pagination">
+          <button className="btn btn-sm btn-outline" disabled={page <= 1} onClick={() => loadGpus(page - 1)}>上一页</button>
+          <span className="page-info">{page} / {totalPages}</span>
+          <button className="btn btn-sm btn-outline" disabled={page >= totalPages} onClick={() => loadGpus(page + 1)}>下一页</button>
+        </div>
       )}
     </div>
   );

@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import API from '../utils/api';
+import { formatPrice, GPU_STATUS_MAP } from '../utils/format';
 
 const emptyGpu = { name: '', model: '', vram: '', compute_power: '', price_per_hour: '', total_units: 1, status: 'available', description: '' };
-
-function formatPrice(cents) {
-  return (cents / 100).toFixed(2);
-}
 
 export default function GpuManage() {
   const [gpus, setGpus] = useState([]);
@@ -33,12 +30,19 @@ export default function GpuManage() {
 
   const handleEdit = (gpu) => {
     setEditing(gpu.id);
-    setForm({ ...gpu, price_per_hour: (gpu.price_per_hour / 100).toFixed(2) });
+    setForm({ ...gpu, price_per_hour: formatPrice(gpu.price_per_hour) });
   };
 
   const handleNew = () => {
     setEditing('new');
     setForm(emptyGpu);
+  };
+
+  const handlePriceChange = (e) => {
+    let v = e.target.value;
+    // Allow at most 2 decimal places
+    if (v.includes('.') && v.split('.')[1].length > 2) return;
+    setForm({...form, price_per_hour: v});
   };
 
   const handleSave = async (e) => {
@@ -104,8 +108,8 @@ export default function GpuManage() {
                 <input value={form.compute_power} onChange={e => setForm({...form, compute_power: e.target.value})} required />
               </div>
               <div className="form-group">
-                <label>单价(元/小时)</label>
-                <input type="number" step="0.01" value={form.price_per_hour} onChange={e => setForm({...form, price_per_hour: e.target.value})} required />
+                <label>单价(元/小时，最多2位小数)</label>
+                <input type="number" step="0.01" value={form.price_per_hour} onChange={handlePriceChange} required />
               </div>
               <div className="form-group">
                 <label>总数量</label>
@@ -144,7 +148,7 @@ export default function GpuManage() {
               <tr key={g.id}>
                 <td>{g.id}</td><td>{g.name}</td><td>{g.model}</td><td>{g.vram}</td><td>{g.compute_power}</td>
                 <td>¥{formatPrice(g.price_per_hour)}/h</td><td>{g.available_units}/{g.total_units}</td>
-                <td><span className={`status-badge ${g.status}`}>{g.status === 'available' ? '可用' : '不可用'}</span></td>
+                <td><span className={`status-badge ${g.status}`}>{GPU_STATUS_MAP[g.status] || g.status}</span></td>
                 <td>
                   <button className="btn btn-sm btn-primary" onClick={() => handleEdit(g)} style={{marginRight:8}}>编辑</button>
                   <button className="btn btn-sm btn-danger" onClick={() => handleDelete(g.id)}>删除</button>

@@ -1,13 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import API from '../utils/api';
-
-const STATUS_MAP = { pending: '待支付', paid: '已支付', running: '运行中', completed: '已完成', cancelled: '已取消' };
-
-const NEXT_STATUS = { pending: ['paid', 'cancelled'], paid: ['running', 'cancelled'], running: ['completed'], completed: [], cancelled: [] };
-
-function formatPrice(cents) {
-  return (cents / 100).toFixed(2);
-}
+import { formatPrice, STATUS_MAP, NEXT_STATUS } from '../utils/format';
 
 export default function OrderManage() {
   const [orders, setOrders] = useState([]);
