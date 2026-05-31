@@ -1,0 +1,12 @@
+{
+  "name": "gpu-rental-platform",
+  "version": "1.0.0",
+  "description": "GPU算力租赁平台 - 前端 + 后端 + 管理面板",
+  "scripts": {
+    "server": "cd server && npm start",
+    "client": "cd client && npm start",
+    "admin": "cd admin && npm start",
+    "install:all": "cd server && npm install && cd ../client && npm install && cd ../admin && npm install",
+    "dev": "cd server && npm run dev"
+  }
+}
