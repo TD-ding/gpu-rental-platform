@@ -121,6 +121,8 @@ h1 { margin-bottom: 24px; }
 }
 .alert-error { background: rgba(239,68,68,.15); color: var(--danger); }
 
+.loading { display: flex; justify-content: center; align-items: center; min-height: 100vh; color: var(--text-muted); }
+
 @media (max-width: 768px) {
   .admin-layout { flex-direction: column; }
   .sidebar { width: 100%; flex-direction: row; overflow-x: auto; padding: 0; }

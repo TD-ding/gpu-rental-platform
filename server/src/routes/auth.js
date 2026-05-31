@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 const { auth, JWT_SECRET } = require('../middleware/auth');
+const { loginLimiter } = require('../middleware/rateLimit');
 
 const router = express.Router();
 
@@ -10,6 +11,12 @@ router.post('/register', (req, res) => {
   const { username, email, password } = req.body;
   if (!username || !email || !password) {
     return res.status(400).json({ error: 'All fields are required' });
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'Password must be at least 6 characters' });
+  }
+  if (username.length < 2 || username.length > 20) {
+    return res.status(400).json({ error: 'Username must be 2-20 characters' });
   }
   try {
     const hash = bcrypt.hashSync(password, 10);
@@ -24,7 +31,7 @@ router.post('/register', (req, res) => {
   }
 });
 
-router.post('/login', (req, res) => {
+router.post('/login', loginLimiter, (req, res) => {
   const { username, password } = req.body;
   if (!username || !password) return res.status(400).json({ error: 'All fields are required' });
   const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);

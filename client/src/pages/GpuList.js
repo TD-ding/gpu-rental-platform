@@ -16,6 +16,12 @@ export default function GpuList() {
     API.get('/gpus').then(res => setGpus(res.data.gpus)).catch(() => setMsg('加载失败'));
   }, []);
 
+  useEffect(() => {
+    if (!msg) return;
+    const timer = setTimeout(() => setMsg(''), 3000);
+    return () => clearTimeout(timer);
+  }, [msg]);
+
   const handleRent = (gpu) => {
     if (!user) { navigate('/login'); return; }
     setSelectedGpu(gpu);

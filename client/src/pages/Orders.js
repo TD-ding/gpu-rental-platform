@@ -14,15 +14,23 @@ const STATUS_MAP = {
 export default function Orders() {
   const [orders, setOrders] = useState([]);
   const [msg, setMsg] = useState('');
-  const { user } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user) return;
+    if (loading) return;
+    if (!user) { navigate('/login'); return; }
     API.get('/orders/my').then(res => setOrders(res.data.orders)).catch(() => setMsg('加载失败'));
-  }, [user]);
+  }, [user, loading]);
 
-  if (!user) { navigate('/login'); return null; }
+  useEffect(() => {
+    if (!msg) return;
+    const timer = setTimeout(() => setMsg(''), 3000);
+    return () => clearTimeout(timer);
+  }, [msg]);
+
+  if (loading) return <div className="page"><p className="empty">加载中...</p></div>;
+  if (!user) return null;
 
   const handlePay = async (id) => {
     try {
