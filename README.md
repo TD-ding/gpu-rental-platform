@@ -14,6 +14,9 @@
 gpu-rental-platform/
 ├── server/                # 后端服务 (Express + SQLite)
 │   ├── .env.example       # 环境变量示例
+│   ├── Dockerfile         # 服务端 Docker 镜像
+│   ├── jest.config.js     # Jest 测试配置
+│   ├── tests/             # 单元测试
 │   └── src/
 │       ├── config/db.js          # 数据库配置、迁移与初始化
 │       ├── middleware/
@@ -27,17 +30,23 @@ gpu-rental-platform/
 │       │   └── users.js          # 用户管理路由（分页）
 │       └── index.js              # 入口文件
 ├── client/                # 用户前端
+│   ├── Dockerfile         # 客户端 Docker 镜像
+│   ├── nginx.conf         # Nginx 配置（API代理 + SPA路由）
 │   └── src/
 │       ├── components/           # ErrorBoundary, GpuCard, RentModal, Navbar
 │       ├── pages/                # 页面组件
 │       ├── utils/                # API, AuthContext, format (共享格式化/映射)
 │       └── App.js                # 应用入口
 ├── admin/                 # 管理员面板
+│   ├── Dockerfile         # 管理面板 Docker 镜像
+│   ├── nginx.conf         # Nginx 配置（API代理 + SPA路由）
 │   └── src/
 │       ├── components/           # Sidebar
 │       ├── pages/                # 页面组件
 │       ├── utils/                # API, AuthContext, format (共享格式化/映射)
 │       └── App.js                # 应用入口
+├── .github/workflows/     # GitHub Actions CI
+├── docker-compose.yml     # Docker Compose 编排
 ├── .gitignore
 └── package.json
 ```
@@ -86,6 +95,31 @@ npm start
 ```
 
 管理面板默认运行在 `http://localhost:3001`（需手动设置端口，或直接使用3000以外的端口）
+
+### 6. 运行测试
+
+```bash
+cd server
+npm test
+```
+
+### 7. 使用 Docker 部署
+
+```bash
+# 修改 JWT_SECRET
+docker compose up -d
+```
+
+- 后端：`http://localhost:5000`
+- 用户前端：`http://localhost:3000`
+- 管理面板：`http://localhost:3001`
+
+## CI
+
+项目使用 GitHub Actions 自动运行 CI，配置在 `.github/workflows/ci.yml`：
+- 服务端单元测试（Jest + Supertest，65个测试用例）
+- 用户前端构建验证
+- 管理面板构建验证
 
 ## 默认账号
 

@@ -7,6 +7,7 @@
     "client": "cd client && npm start",
     "admin": "cd admin && npm start",
     "install:all": "cd server && npm install && cd ../client && npm install && cd ../admin && npm install",
-    "dev": "cd server && npm run dev"
+    "dev": "cd server && npm run dev",
+    "test": "cd server && npm test"
   }
 }

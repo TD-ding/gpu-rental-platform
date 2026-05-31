@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  server:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - JWT_SECRET=${JWT_SECRET:-gpu_rental_docker_secret_change_me}
+      - PORT=5000
+      - DB_PATH=/app/data/gpu_rental.db
+      - ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
+    volumes:
+      - db-data:/app/data
+    restart: unless-stopped
+
+  client:
+    build:
+      context: .
+      dockerfile: client/Dockerfile
+    ports:
+      - "3000:80"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+  admin:
+    build:
+      context: .
+      dockerfile: admin/Dockerfile
+    ports:
+      - "3001:80"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+volumes:
+  db-data:
